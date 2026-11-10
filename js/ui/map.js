@@ -84,11 +84,17 @@ function renderRanking() {
 async function onCities(e) {
   const d = e.detail; const cities = (Array.isArray(d) ? d : d && d.cities) || [];
   try {
-    const [lf, snap] = await Promise.all([loadLeaflet(), getSnapshot(cities)]);
-    L = lf; snapshot = snap;
+    snapshot = await getSnapshot(cities);
   } catch (err) {
     const host = document.getElementById('ranking');
     if (host) host.textContent = 'Live city ranking unavailable right now.';
+    console.warn('[saans] snapshot:', err.message);
+    return;
+  }
+  renderRanking();
+  try { L = await loadLeaflet(); } catch (err) {
+    const el0 = document.getElementById('map');
+    if (el0) el0.textContent = 'Map could not load.';
     console.warn('[saans] map:', err.message);
     return;
   }
@@ -102,7 +108,6 @@ async function onCities(e) {
   }
   if (!fitted && snapshot.length) { map.fitBounds(L.latLngBounds(snapshot.map((s) => [s.city.lat, s.city.lon])), { padding: [20, 20], maxZoom: 3 }); fitted = true; }
   drawMarkers();
-  renderRanking();
   focus();
 }
 
