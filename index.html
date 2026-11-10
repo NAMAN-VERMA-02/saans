@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saans - Live Air Quality Anywhere on Earth</title>
+<meta name="description" content="Saans (breath): live air quality, health guidance and the best hours to go outside for any city on Earth, using the US EPA AQI scale and independent global model data.">
+<meta name="theme-color" content="#0f766e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='%230f766e'/%3E%3Cpath d='M25 40h35a8 8 0 1 0-8-8M25 55h45a9 9 0 1 1-9 9M25 70h25' stroke='white' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/viz.css">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="34" height="34"><circle cx="50" cy="50" r="46" fill="currentColor"/><path d="M25 40h35a8 8 0 1 0-8-8M25 55h45a9 9 0 1 1-9 9M25 70h25" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/></svg>
+      </span>
+      <div>
+        <h1>Saans</h1>
+        <p class="tagline">Saans: see the air you breathe, anywhere on Earth</p>
+      </div>
+    </div>
+    <form class="search" id="search-form" role="search" autocomplete="off">
+      <label class="sr" for="city-input">Search for a city</label>
+      <div class="combo"><input id="city-input" role="combobox" aria-expanded="false" aria-controls="city-list" aria-autocomplete="list" placeholder="Search any city in the world" spellcheck="false">
+      <ul id="city-list" role="listbox" hidden></ul></div>
+      <button type="submit" class="btn">Go</button>
+      <button type="button" class="btn ghost" id="locate" title="Use your current position">&#128205; Use my location</button>
+    </form>
+  </div>
+</header>
+
+<div id="buddy-caption" class="bubble" role="status" aria-live="polite" hidden></div>
+<main id="main" class="wrap" tabindex="-1">
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+  <div id="content">
+    <section class="grid-top">
+      <article class="card hero rise" id="hero" aria-labelledby="hero-city">
+        <div class="hero-head">
+          <div>
+            <h2 id="hero-city">&nbsp;</h2>
+            <p class="muted" id="hero-state"></p>
+          </div>
+          <div class="head-r"><p class="muted updated" id="hero-updated"></p><p class="wx" id="wx" hidden></p></div>
+        </div>
+        <div class="hero-body">
+          <div class="ring" id="ring" aria-hidden="false">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="ring-text">
+              <span class="aqi-num" id="aqi-num">--</span>
+              <span class="aqi-unit">US AQI</span>
+            </div>
+          </div>
+          <div class="hero-info">
+            <span class="badge" id="band-badge">Loading</span>
+            <p class="verdict" id="verdict"></p>
+            <p class="muted" id="dominant"></p>
+            <p class="mask" id="mask"></p>
+          </div>
+        </div>
+        <div class="scale" aria-hidden="true"><i style="background:var(--b0)"></i><i style="background:var(--b1)"></i><i style="background:var(--b2)"></i><i style="background:var(--b3)"></i><i style="background:var(--b4)"></i><i style="background:var(--b5)"></i><b id="scale-pin"></b></div>
+      </article>
+
+      <article class="card lungs rise" aria-labelledby="lungs-h">
+        <h3 id="lungs-h">Your lungs today</h3>
+        <p class="lungs-big"><span id="cig">--</span><small> cigarettes</small></p>
+        <p class="muted">Breathing the last 24h of PM2.5 here is roughly like smoking this many cigarettes.</p>
+        <p class="who"><strong id="who">--</strong><span>&times; the WHO 24h limit</span></p>
+        <p class="tiny muted" id="pm-mean"></p>
+      </article>
+    </section>
+
+    <section aria-labelledby="poll-h">
+      <h3 class="sec" id="poll-h">Pollutants</h3>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section class="grid-two">
+      <article class="card" aria-labelledby="health-h">
+        <h3 id="health-h">Health guidance</h3>
+        <dl class="health">
+          <dt>Everyone</dt><dd id="h-general"></dd>
+          <dt>Sensitive groups</dt><dd id="h-sensitive"></dd>
+        </dl>
+        <h4>What to do</h4>
+        <ul class="actions" id="h-actions"></ul>
+        <h4>Activities right now</h4>
+        <ul class="acts" id="acts"></ul>
+      </article>
+
+      <article class="card" aria-labelledby="hours-h">
+        <h3 id="hours-h">Best hours to go outside</h3>
+        <p class="muted tiny">Cleanest windows in the next 24 hours (local time).</p>
+        <ol class="hours" id="best-hours"></ol>
+        <h4>Hours to avoid</h4>
+        <p class="worst" id="worst-hours"></p>
+        <h4>3-day outlook</h4>
+        <ul class="outlook" id="outlook"></ul>
+      </article>
+    </section>
+
+    <section aria-labelledby="chart-h">
+      <h3 class="sec" id="chart-h">Past 24 hours and forecast</h3>
+      <div class="card plug"><div id="chart" class="plug-chart"></div></div>
+    </section>
+
+    <section aria-labelledby="map-h">
+      <h3 class="sec" id="map-h">World air map and ranking</h3>
+      <div class="grid-map">
+        <div class="card plug"><div id="map" class="plug-map"></div></div>
+        <div class="card plug"><div id="ranking" class="plug-rank"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Air quality: <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noopener">Copernicus CAMS via Open-Meteo</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). Independent global model data, so values can differ from ground monitors. Not medical advice.</p>
+  </div>
+</footer>
+<script type="module" src="js/ui/scene3d.js"></script>
+<script type="module" src="js/ui/chart.js"></script>
+<script type="module" src="js/ui/map.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
