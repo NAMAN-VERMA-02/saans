@@ -122,15 +122,6 @@ async function init() {
   resize();
   window.addEventListener('resize', () => { resize(); if (reduced) frame(0); });
 
-  // buddy (optional, shares this renderer/scene)
-  let buddy = null;
-  try {
-    const { createBuddy } = await import('./buddy.js');
-    let npcState = null;
-    try { npcState = (await import('../insights.js')).npcState || null; } catch {}
-    buddy = createBuddy(THREE, scene, camera, { mobile, npcState });
-  } catch (err) { console.warn('[saans] buddy unavailable:', err.message); }
-
   // state
   let cur = look(40, '#00b050'), from = cur, to = cur, easeT = 1;
   const ease = (t) => t * t * (3 - 2 * t);
@@ -150,8 +141,7 @@ async function init() {
     const air = e.detail && e.detail.air;
     const c = air && air.current;
     if (!c || !Number.isFinite(c.aqi)) return;
-    to = look(c.aqi, c.band && c.band.color, buddy ? 1 : 1);
-    if (buddy) { buddy.setMood(e.detail, reduced); to = look(c.aqi, c.band && c.band.color, 1 - 0.55 * (e.detail.weather && e.detail.weather.isDay === false ? 1 : 0)); }
+    to = look(c.aqi, c.band && c.band.color, 1 - 0.55 * (e.detail.weather && e.detail.weather.isDay === false ? 1 : 0));
     from = cur; easeT = 0;
     if (reduced) { cur = to; easeT = 1; apply(cur); frame(0); }
   });
@@ -170,7 +160,6 @@ async function init() {
       apply(cur);
     }
     time += dt;
-    if (buddy) buddy.update(dt, time, px, py);
     phase += dt * cur.rate * 6.283;
     const breath = 0.5 + 0.5 * Math.sin(phase);
     orb.scale.setScalar(0.92 + 0.16 * breath);

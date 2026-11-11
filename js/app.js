@@ -148,12 +148,10 @@ const findCity = q => {
     cities.find(c => c.name.toLowerCase().startsWith(q)) || cities.find(c => c.name.toLowerCase().includes(q));
 };
 
-let capTimer;
 window.addEventListener('buddy:mood', e => {
   const el = $('buddy-caption'), t = e.detail && e.detail.text;
-  if (!t) { el.hidden = true; return; }
+  if (!t) return;
   el.textContent = t; el.hidden = false;
-  clearTimeout(capTimer); capTimer = setTimeout(() => { el.hidden = true; }, 9000);
 });
 
 const place = c => [c.admin1 || c.state, c.country].filter(Boolean).join(', ');

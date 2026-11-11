@@ -131,9 +131,6 @@ h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut
 
 .head-r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .wx{display:inline-flex;gap:6px;align-items:center;padding:4px 12px;border-radius:99px;font-weight:600;font-size:.9rem;background:rgba(127,127,127,.14);border:1px solid var(--line)}
-.bubble{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;max-width:min(88vw,380px);padding:10px 16px;border-radius:20px;font-weight:600;font-size:.92rem;text-align:center;background:var(--card);border:1px solid var(--glass-b);box-shadow:0 8px 28px rgba(0,0,0,.25);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);pointer-events:none;animation:rise .4s both}
-.bubble::after{content:"";position:absolute;left:50%;bottom:-7px;width:14px;height:14px;background:inherit;border-right:1px solid var(--glass-b);border-bottom:1px solid var(--glass-b);transform:translateX(-50%) rotate(45deg);border-radius:0 0 4px 0}
-.bubble[hidden]{display:none}
 
 .combo{position:relative;flex:1 1 180px;min-width:0;display:flex}
 .combo input{width:100%}
@@ -146,3 +143,17 @@ h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut
 #city-list .none{cursor:default;color:var(--muted)}
 .top{overflow:visible}
 .wx[hidden],.status[hidden]{display:none}
+
+/* buddy stage */
+.col-r{display:contents}
+.hero{order:1}.stage{order:2}.lungs{order:3}
+.stage{padding:10px 12px 14px;display:flex;flex-direction:column;gap:6px}
+#buddy-canvas{display:block;width:100%;height:270px}
+.stage-cap{margin:0;text-align:center;font-weight:600;font-size:.95rem;line-height:1.35}
+.stage-cap[hidden]{display:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(min-width:900px){
+  .col-r{display:flex;flex-direction:column;gap:16px}
+  .hero,.stage,.lungs{order:0}
+  #buddy-canvas{height:300px}
+}

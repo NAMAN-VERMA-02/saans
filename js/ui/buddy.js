@@ -4,7 +4,7 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const EPA = [[50, 'Good'], [100, 'Moderate'], [150, 'Unhealthy for sensitive groups'], [200, 'Unhealthy'], [300, 'Very unhealthy'], [Infinity, 'Hazardous']];
 const bandName = (a) => EPA.find((b) => a <= b[0])[1];
 
-export function createBuddy(THREE, scene, camera, { mobile = false, npcState = null } = {}) {
+export function createBuddy(THREE, scene, camera, { mobile = false, npcState = null, stage = false } = {}) {
   const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0, flatShading: true, ...extra });
   const M = {
     body: std(0xffb86b), wet: std(0x6a4a2a, { roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0 }),
@@ -24,10 +24,10 @@ export function createBuddy(THREE, scene, camera, { mobile = false, npcState = n
   scene.add(lights.hemi, lights.sun, lights.flash);
 
   const root = new THREE.Group();
-  const baseX = mobile ? 1.3 : 3.1, baseY = mobile ? -3.6 : -2.2;
-  root.position.set(baseX, baseY, 2.5);
-  root.scale.setScalar(mobile ? 0.85 : 1.1);
+  if (stage) { root.position.set(0, -1.55, 0); root.scale.setScalar(1); }
+  else { root.position.set(mobile ? 1.3 : 3.1, mobile ? -3.6 : -2.2, 2.5); root.scale.setScalar(mobile ? 0.85 : 1.1); }
   root.rotation.y = -0.55; scene.add(root);
+  const RB = stage ? { w: 7, top: 4.5, bot: -3.2, z0: -1.5, zr: 3 } : { w: 16, top: 8, bot: -6, z0: -2.4, zr: 8 };
   const hop = new THREE.Group(); root.add(hop);
 
   // body (capsule) + wet lower half
@@ -84,20 +84,20 @@ export function createBuddy(THREE, scene, camera, { mobile = false, npcState = n
   const smog = [], clouds = [], sparks = [];
   const mkSprite = (tex, color, blending) => new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color, transparent: true, depthWrite: false, opacity: 0, blending: blending || THREE.NormalBlending }));
   for (let i = 0; i < (mobile ? 4 : 7); i++) { const s = mkSprite(puffTex, 0x6f6a64); s.scale.setScalar(2.6 + Math.random() * 1.6); s.userData = { a: Math.random() * 6.28, r: 1.6 + Math.random() * 1.6, y: Math.random() * 3, sp: 0.15 + Math.random() * 0.2 }; root.add(s); smog.push(s); }
-  for (let i = 0; i < 3; i++) { const s = mkSprite(puffTex, 0xf4f6fa); s.scale.set(4 + i, 2.4 + i * 0.3, 1); s.position.set(-1.5 + i * 1.8, 4.6 + (i % 2) * 0.4, -0.5); root.add(s); clouds.push(s); }
+  for (let i = 0; i < 3; i++) { const s = mkSprite(puffTex, 0xf4f6fa); s.scale.set(4 + i, 2.4 + i * 0.3, 1); s.position.set(-1.5 + i * 1.8, (stage ? 3.1 : 4.6) + (i % 2) * 0.4, -0.5); root.add(s); clouds.push(s); }
   for (let i = 0; i < 8; i++) { const s = mkSprite(sparkTex, 0xffffff, THREE.AdditiveBlending); s.userData = { a: (i / 8) * 6.28, r: 1.2 + (i % 3) * 0.35, y: 1 + (i % 4) * 0.6, ph: Math.random() * 6 }; root.add(s); sparks.push(s); }
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M.moon); moon.position.set(mobile ? -1.5 : -3.2, 5.2, -2); root.add(moon); moon.visible = false;
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), M.moon); moon.position.set(stage ? -2.2 : (mobile ? -1.5 : -3.2), stage ? 3.4 : 5.2, -2); root.add(moon); moon.visible = false;
 
   // rain streaks: one LineSegments
   const NR = mobile ? 90 : 220, rp = new Float32Array(NR * 6), rv = new Float32Array(NR);
-  for (let i = 0; i < NR; i++) { rp[i * 6] = (Math.random() - 0.5) * 16; rp[i * 6 + 1] = Math.random() * 14 - 5; rp[i * 6 + 2] = (Math.random() - 0.3) * 8; rv[i] = 9 + Math.random() * 5; }
+  for (let i = 0; i < NR; i++) { rp[i * 6] = (Math.random() - 0.5) * RB.w; rp[i * 6 + 1] = RB.bot + Math.random() * (RB.top - RB.bot); rp[i * 6 + 2] = RB.z0 + Math.random() * RB.zr; rv[i] = 9 + Math.random() * 5; }
   const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(rp, 3));
   const rainMat = new THREE.LineBasicMaterial({ color: 0xa8cdf0, transparent: true, opacity: 0, depthWrite: false });
   const rain = new THREE.LineSegments(rg, rainMat); rain.frustumCulled = false; scene.add(rain);
 
   // state (targets set by setMood, eased in update)
   const T = { umb: 0, wet: 0, rain: 0, storm: 0, mask: 0, n95: 0, tank: 0, smog: 0, happy: 0, shades: 0, hot: 0, cloud: 0, night: 0, snow: 0 };
-  const S = { ...T }; const api = { dim: 1 };
+  const S = { ...T }; const api = { dim: 1, flash: 0 };
   let blinkT = 2, blink = 0, flashT = 3, flash = 0, hopT = 0, fanSpin = 0;
 
   // Fallback used only if insights.npcState is missing. Mirrors npcState's output shape (EPA AQI).
@@ -125,7 +125,7 @@ export function createBuddy(THREE, scene, camera, { mobile = false, npcState = n
     T.umb = n.umbrella ? 1 : 0; T.wet = clamp01(n.wetness || 0);
     T.rain = clamp01(+n.rain || 0) * 0.9; T.snow = n.snow ? 1 : 0; T.storm = n.storm ? 1 : 0;
     T.mask = n.mask !== 'none' ? 1 : 0; T.n95 = n.mask === 'n95' || n.mask === 'oxygen' ? 1 : 0; T.tank = n.mask === 'oxygen' ? 1 : 0;
-    T.smog = clamp01(+n.smog || 0); T.cloud = n.fog ? 1 : clamp01(+n.clouds || 0);
+    T.smog = n.mask === 'n95' || n.mask === 'oxygen' ? clamp01(0.5 + (+n.smog || 0) * 0.6) : n.mask === 'cloth' ? 0.25 : 0; T.cloud = n.fog ? 1 : clamp01(+n.clouds || 0);
     T.shades = n.sunglasses ? 1 : 0; T.night = n.isDay === false ? 1 : 0;
     T.hot = w && w.temp > 35 ? 1 : 0;
     T.happy = n.mood === 'happy' && !n.rain && !n.snow ? 1 : 0;
@@ -134,6 +134,7 @@ export function createBuddy(THREE, scene, camera, { mobile = false, npcState = n
   };
 
   api.update = (dt, time, ptrX = 0, ptrY = 0) => {
+    if (stage) root.rotation.y = -0.3 + Math.sin(time * 0.45) * 1.0;
     const k = dt > 0 ? 1 - Math.exp(-dt * 3.5) : 0;
     for (const key in T) S[key] += (T[key] - S[key]) * k;
     api.dim = 1 - 0.55 * S.night;
@@ -183,13 +184,13 @@ export function createBuddy(THREE, scene, camera, { mobile = false, npcState = n
       for (let i = 0; i < NR; i++) {
         const j = i * 6, dy = rv[i] * dt * (sn > 0.5 ? 0.12 : 1), len = sn > 0.5 ? 0.08 : 0.6;
         rp[j + 1] -= dy; rp[j + 4] = rp[j + 1] - len; rp[j] += dy * 0.08 + (sn > 0.5 ? Math.sin(time + i) * dt * 0.3 : 0); rp[j + 3] = rp[j] + 0.05; rp[j + 5] = rp[j + 2];
-        if (rp[j + 1] < -6) { rp[j + 1] = 8; rp[j] = (Math.random() - 0.5) * 16; }
+        if (rp[j + 1] < RB.bot) { rp[j + 1] = RB.top; rp[j] = (Math.random() - 0.5) * RB.w; }
       }
       rg.attributes.position.needsUpdate = true;
     }
     // lightning
     if (S.storm > 0.5 && dt > 0) { flashT -= dt; if (flashT < 0) { flash = 1; flashT = 2 + Math.random() * 4; } }
-    flash = Math.max(0, flash - dt * 4); lights.flash.intensity = flash * 40 * (Math.random() > 0.3 ? 1 : 0.4);
+    flash = Math.max(0, flash - dt * 4); lights.flash.intensity = flash * 40 * (Math.random() > 0.3 ? 1 : 0.4); api.flash = flash;
   };
   return api;
 }
